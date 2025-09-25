@@ -1,0 +1,8 @@
+[package]
+name = "simd_parse_int"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+name = "simd_parse_int"
+path = "src/lib.rs"
