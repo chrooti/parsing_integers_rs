@@ -1,12 +1,10 @@
-#![feature(likely_unlikely)]
-
-use std::arch::x86_64::_mm_load_si128;
 use std::arch::x86_64::__m128i;
 use std::arch::x86_64::_mm_add_epi8;
 use std::arch::x86_64::_mm_and_si128;
 use std::arch::x86_64::_mm_cmpgt_epi8;
 use std::arch::x86_64::_mm_cvtsi128_si64;
 use std::arch::x86_64::_mm_lddqu_si128;
+use std::arch::x86_64::_mm_load_si128;
 use std::arch::x86_64::_mm_madd_epi16;
 use std::arch::x86_64::_mm_maddubs_epi16;
 use std::arch::x86_64::_mm_movemask_epi8;
@@ -17,8 +15,14 @@ use std::arch::x86_64::_mm_set1_epi8;
 use std::arch::x86_64::_mm_shuffle_epi8;
 use std::arch::x86_64::_mm_sub_epi8;
 
-use core::hint::likely;
-use core::hint::unlikely;
+use core::convert::identity as likely;
+// use core::convert::identity as unlikely;
+
+//
+        // println!(
+        //     "chunk {:?}",
+        //     std::slice::from_raw_parts((&chunk) as *const __m128i as *const u8, 16)
+        // );
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ParseResult {
@@ -48,30 +52,24 @@ impl From<ParseResult> for Result<usize, ()> {
 
 pub fn parse(x: &[i8]) -> ParseResult {
     unsafe {
-        // the case len == 1 is the only one where we're considerably (2x) slower
-        // than the naive loop, so check for it specifically
-        // benchmarks shows this doesn't slow the common case
-        if unlikely(x.len() == 1) {
-            let c = (x[0] - '0' as i8) as u8;
-            if c > 9 {
-                return ParseResult { value: 0, len: 0 };
-            }
-
-            return ParseResult {
-                value: c as usize,
-                len: 1,
-            };
-        }
+        // TODO: logic for size < 5
 
         // realign str to 16 bytes by masking away the last 4 bits of its address
         let mut str = x.as_ptr();
         let offset = str.addr() & (0b1111 as usize);
         str = str.sub(offset);
 
-        let mut chunk = _mm_load_si128(x.as_ptr() as *const __m128i);
+        let mut chunk = _mm_load_si128(str.addr() as *const __m128i);
 
         // since we loaded some bytes before the start of the actual string here we shift them away
         chunk = shift_right_8x16(chunk, offset);
+
+        // we've loaded 16 bytes so we need to mask the ones after the end of the string
+        // TODO: fix cleanly
+        let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
+        let chunk_index_mask = _mm_set1_epi8(x.len() as i8);
+        let is_before_end_mask = _mm_cmpgt_epi8(chunk_index_mask, indices);
+        chunk = _mm_and_si128(chunk, is_before_end_mask);
 
         let mut result = parse_16_chars(chunk);
         let mut value = result.value;
@@ -99,10 +97,7 @@ pub fn parse(x: &[i8]) -> ParseResult {
             if let Some(sum) = (value * POWERS_OF_TEN[result.digit_count]).checked_add(result.value)
             {
                 // likely!! TODO
-                return ParseResult {
-                    value: sum,
-                    len: i,
-                };
+                return ParseResult { value: sum, len: i };
             } else {
                 return ParseResult { value: 0, len: 0 };
             }
@@ -152,10 +147,7 @@ pub fn parse(x: &[i8]) -> ParseResult {
 
         if let Some(sum) = (value * POWERS_OF_TEN[result.digit_count]).checked_add(result.value) {
             // likely!! TODO
-            return ParseResult {
-                value: sum,
-                len: i,
-            };
+            return ParseResult { value: sum, len: i };
         } else {
             return ParseResult { value: 0, len: 0 };
         }
@@ -189,7 +181,7 @@ fn parse_16_chars(input: __m128i) -> IntermediateResult {
         let tens_mask = _mm_movemask_epi8(gt) | 0x10000;
 
         // TODO: check if usize cast is relevant or rust is a saner language
-        let digit_count = tens_mask.leading_zeros() as usize;
+        let digit_count = tens_mask.trailing_zeros() as usize;
         let non_digit_count: usize = 16 - digit_count;
 
         // shift away everything starting from the first trailing non-digit
@@ -278,13 +270,13 @@ fn shift_left_8x16(x: __m128i, amount: usize) -> __m128i {
 
     #[rustfmt::skip]
     static SHUFFLE_LUT: [i8; 32] = [
-        -128, -128, -128, -128, 
-        -128, -128, -128, -128, 
-        -128, -128, -128, -128, 
-        -128, -128, -128, -128, 
-        0, 1, 2, 3, 
-        4, 5, 6, 7, 
-        8, 9, 10, 11, 
+        -128, -128, -128, -128,
+        -128, -128, -128, -128,
+        -128, -128, -128, -128,
+        -128, -128, -128, -128,
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        8, 9, 10, 11,
         12, 13, 14, 15,
     ];
 
@@ -298,14 +290,14 @@ fn shift_left_8x16(x: __m128i, amount: usize) -> __m128i {
 fn shift_right_8x16(x: __m128i, amount: usize) -> __m128i {
     #[rustfmt::skip]
     static SHUFFLE_LUT: [i8; 32] = [
-        0, 1, 2, 3, 
-        4, 5, 6, 7, 
-        8, 9, 10, 11, 
+        0, 1, 2, 3,
+        4, 5, 6, 7,
+        8, 9, 10, 11,
         12, 13, 14, 15,
-        -128, -128, -128, -128, 
-        -128, -128, -128, -128, 
-        -128, -128, -128, -128, 
-        -128, -128, -128, -128, 
+        -128, -128, -128, -128,
+        -128, -128, -128, -128,
+        -128, -128, -128, -128,
+        -128, -128, -128, -128,
     ];
 
     let shuffle = unsafe { _mm_lddqu_si128(SHUFFLE_LUT.as_ptr().add(amount) as *const __m128i) };
