@@ -1,27 +1,69 @@
-use simd_parse_int;
+use simd_parse_int::{self, ParseResult};
 
 #[test]
 fn test_parse() {
+    do_test(0, 1, b"0");
+    do_test(1, 1, b"1");
+    do_test(12, 2, b"12");
+    do_test(123, 3, b"123");
+    do_test(1234, 4, b"1234");
+    do_test(12345, 5, b"12345");
+    do_test(123456, 6, b"123456");
+    do_test(1234567, 7, b"1234567");
+    do_test(12345678, 8, b"12345678");
+    do_test(123456789, 9, b"123456789");
+    do_test(1234567891, 10, b"1234567891");
+    do_test(12345678912, 11, b"12345678912");
+    do_test(123456789123, 12, b"123456789123");
+    do_test(1234567891234, 13, b"1234567891234");
+    do_test(12345678912345, 14, b"12345678912345");
+    do_test(123456789123456, 15, b"123456789123456");
+    do_test(1234567891234567, 16, b"1234567891234567");
+    do_test(12345678912345678, 17, b"12345678912345678");
+    do_test(123456789123456789, 18, b"123456789123456789");
+    do_test(1234567891234567891, 19, b"1234567891234567891");
+    do_test(12345678912345678912, 20, b"12345678912345678912");
+    do_test(std::usize::MAX, 20, b"18446744073709551615");
+}
+
+#[test]
+fn test_parse_trailing_garbage() {
+    do_test(0, 1, b"0aa11");
+    do_test(1, 1, b"1aa11");
+    do_test(12, 2, b"12aa11");
+    do_test(123, 3, b"123aa11");
+    do_test(1234, 4, b"1234aa11");
+    do_test(12345, 5, b"12345aa11");
+    do_test(123456, 6, b"123456aa11");
+    do_test(1234567, 7, b"1234567aa11");
+    do_test(12345678, 8, b"12345678aa11");
+    do_test(123456789, 9, b"123456789aa11");
+    do_test(1234567891, 10, b"1234567891aa11");
+    do_test(12345678912, 11, b"12345678912aa11");
+    do_test(123456789123, 12, b"123456789123aa11");
+    do_test(1234567891234, 13, b"1234567891234aa11");
+    do_test(12345678912345, 14, b"12345678912345aa11");
+    do_test(123456789123456, 15, b"123456789123456aa11");
+    do_test(1234567891234567, 16, b"1234567891234567aa11");
+    do_test(12345678912345678, 17, b"12345678912345678aa11");
+    do_test(123456789123456789, 18, b"123456789123456789aa11");
+    do_test(1234567891234567891, 19, b"1234567891234567891aa11");
+    do_test(12345678912345678912, 20, b"12345678912345678912aa11");
+    do_test(std::usize::MAX, 20, b"18446744073709551615aa11");
+}
+
+#[test]
+fn test_parse_leading_zeros() {
+    do_test(12345234562624652344, 20, b"12345234562624652344");
+    do_test(2222221343435542, 20, b"00002222221343435542");
+}
+
+fn do_test(expected_value: usize, expected_len: usize, input: &[u8], ) {
     assert_eq!(
-        simd_parse_int::parse(&[0]),
-        simd_parse_int::ParseResult { value: 0, len: 0 }
-    );
-    assert_eq!(
-        simd_parse_int::parse(&b"123".map(|u| u as i8)),
-        simd_parse_int::ParseResult { value: 123, len: 3 }
-    );
-    assert_eq!(
-        simd_parse_int::parse(&b"12345234562624652344".map(|u| u as i8)),
-        simd_parse_int::ParseResult {
-            value: 12345234562624652344,
-            len: 20
-        }
-    );
-    assert_eq!(
-        simd_parse_int::parse(&b"00002222221343435542".map(|u| u as i8)),
-        simd_parse_int::ParseResult {
-            value: 2222221343435542,
-            len: 20
+        simd_parse_int::parse(input),
+        ParseResult {
+            value: expected_value,
+            len: expected_len
         }
     );
 }
