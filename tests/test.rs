@@ -1,3 +1,7 @@
+use std::alloc::Layout;
+use std::alloc::alloc;
+use std::ptr::slice_from_raw_parts_mut;
+
 use simd_parse_int::{self, ParseResult};
 
 #[test]
@@ -56,6 +60,24 @@ fn test_parse_trailing_garbage() {
 fn test_parse_leading_zeros() {
     do_test(12345234562624652344, 20, b"12345234562624652344");
     do_test(2222221343435542, 20, b"00002222221343435542");
+}
+
+#[test]
+fn test_parse_from_middle() {
+    let input = b"1111123456789102232343455234";
+
+    let layout = Layout::from_size_align(input.len(), 16).unwrap();
+    let ptr = unsafe { alloc(layout) };
+    if ptr.is_null() {
+        panic!("aligned allocation failure");
+    }
+
+    let slice = slice_from_raw_parts_mut(ptr, input.len());
+    unsafe { slice.as_mut().unwrap().copy_from_slice(input) };
+
+    assert!(ptr.addr() % 16 == 0);
+
+    do_test(1123456, 7, unsafe { &slice.as_ref().unwrap()[3..10] });
 }
 
 fn do_test(expected_value: usize, expected_len: usize, input: &[u8]) {
