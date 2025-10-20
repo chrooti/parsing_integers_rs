@@ -58,7 +58,7 @@ fn test_parse_leading_zeros() {
     do_test(2222221343435542, 20, b"00002222221343435542");
 }
 
-fn do_test(expected_value: usize, expected_len: usize, input: &[u8], ) {
+fn do_test(expected_value: usize, expected_len: usize, input: &[u8]) {
     assert_eq!(
         simd_parse_int::parse(input),
         ParseResult {

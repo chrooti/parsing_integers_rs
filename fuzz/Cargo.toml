@@ -1,0 +1,22 @@
+[package]
+name = "simd_parse_int-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1.4.2", features = ["derive"] }
+
+[dependencies.simd_parse_int]
+path = ".."
+
+[[bin]]
+name = "parse_int"
+path = "fuzz_targets/parse_int.rs"
+test = false
+doc = false
+bench = false

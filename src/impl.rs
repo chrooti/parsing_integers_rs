@@ -18,8 +18,6 @@ use std::arch::x86_64::_mm_set_epi16;
 use std::arch::x86_64::_mm_set1_epi8;
 use std::arch::x86_64::_mm_sub_epi8;
 
-
-
 #[derive(PartialEq, Eq, Debug)]
 pub struct ParseResult {
     pub value: usize,
@@ -58,7 +56,7 @@ pub fn parse(x: &[u8]) -> ParseResult {
         let mut len = 0;
 
         for (i, byte) in x.iter().enumerate() {
-            let c = byte - 0x30;
+            let c = byte.wrapping_sub(0x30);
             if c > 9 {
                 break;
             }
@@ -67,15 +65,13 @@ pub fn parse(x: &[u8]) -> ParseResult {
             len = i + 1;
         }
 
-        return ParseResult {
-            value: value,
-            len: len,
-        };
+        return ParseResult { value, len };
     }
 
     // realign str to 16 bytes by masking away the last 4 bits of its address
     let mut str = x.as_ptr();
-    let offset = str.addr() & (0b1111 as usize);
+
+    let offset = str.addr() & 0b1111_usize;
     str = unsafe { str.sub(offset) };
 
     let mut chunk = unsafe { _mm_load_si128(str as *const __m128i) };
@@ -89,10 +85,7 @@ pub fn parse(x: &[u8]) -> ParseResult {
 
     // string is not all digits
     if result.len != 16 - offset {
-        return ParseResult {
-            value: value,
-            len: i,
-        };
+        return ParseResult { value, len: i };
     }
 
     // this duplicates the "last round" code below to speed up the common case
@@ -116,7 +109,10 @@ pub fn parse(x: &[u8]) -> ParseResult {
             return ParseResult { value: 0, len: 0 };
         };
 
-        return ParseResult { value: new_value, len: i };
+        return ParseResult {
+            value: new_value,
+            len: i,
+        };
     }
 
     // TODO: verify it makes a difference
@@ -126,7 +122,7 @@ pub fn parse(x: &[u8]) -> ParseResult {
     // strings with length > 32. The only way to end up here with a valid number
     // is by having 12 or more zeros in front of the string
 
-    let mut loops = 1 as usize;
+    let mut loops = 1_usize;
 
     // same as above, with checked addition for overflow and without shifting away bytes
     // continues until there are <= 16 bytes to parse
@@ -150,10 +146,7 @@ pub fn parse(x: &[u8]) -> ParseResult {
         value = new_value;
 
         if result.len != 16 {
-            return ParseResult {
-                value: value,
-                len: i,
-            };
+            return ParseResult { value, len: i };
         }
 
         if x.len() - i <= 16 {
@@ -179,10 +172,7 @@ pub fn parse(x: &[u8]) -> ParseResult {
         return ParseResult { value: 0, len: 0 };
     };
 
-    ParseResult {
-        value: value,
-        len: i,
-    }
+    ParseResult { value, len: i }
 }
 
 #[inline]

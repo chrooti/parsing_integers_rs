@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -e -o pipefail
+shopt -s globstar nullglob extglob
+
+# not using .cargo/config because envvar set in there are ignored for the build
+# and rustflags are ignored by cargo-fuzz because it sets envvars
+export RUSTFLAGS="-C target-feature=+sse4.1"
+
+task_fuzz() {
+	cargo fuzz run parse_int --sanitizer none -- -max_total_time=1
+}
+
+main() {
+	task="$1"
+	shift
+
+	set -o xtrace
+	"task_${task}" "$@"
+}
+
+main "$@"
