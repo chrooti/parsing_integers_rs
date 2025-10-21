@@ -7,3 +7,12 @@ edition = "2024"
 [lib]
 name = "simd_parse_int"
 path = "src/lib.rs"
+
+[[bench]]
+name = "parse_int"
+harness = false
+
+[dev-dependencies]
+atoi_simd = "0.16.1"
+criterion = "0.7.0"
+rand = "0.9.2"

@@ -7,6 +7,20 @@ shopt -s globstar nullglob extglob
 # and rustflags are ignored by cargo-fuzz because it sets envvars
 export RUSTFLAGS="-C target-feature=+sse4.1"
 
+task_bench() {
+	echo 0 | sudo tee /sys/devices/system/cpu/cpufreq/boost &> /dev/null
+	sudo cpupower frequency-set --governor performance &> /dev/null
+
+	local user
+	user="$(id -un)"
+
+	# set scheudler to FIFO and pin to single CPU core
+	sudo chrt -f 80 taskset -c 1 su "${user}" -c 'cargo bench'
+
+	sudo cpupower frequency-set --governor powersave &> /dev/null
+	echo 1 | sudo tee /sys/devices/system/cpu/cpufreq/boost &> /dev/null
+}
+
 task_fuzz() {
 	cargo fuzz run parse_int --sanitizer none -- -max_total_time=1
 }
