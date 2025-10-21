@@ -17,6 +17,7 @@ use std::arch::x86_64::_mm_set_epi8;
 use std::arch::x86_64::_mm_set_epi16;
 use std::arch::x86_64::_mm_set1_epi8;
 use std::arch::x86_64::_mm_sub_epi8;
+use std::hint::cold_path;
 use std::hint::likely;
 
 #[derive(PartialEq, Eq, Debug)]
@@ -44,10 +45,6 @@ impl From<ParseResult> for Result<usize, ()> {
         }
     }
 }
-
-#[inline]
-#[cold]
-fn cold_path() {}
 
 #[inline]
 #[target_feature(enable = "sse4.1")]

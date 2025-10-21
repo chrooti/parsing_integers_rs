@@ -1,4 +1,5 @@
 #![feature(likely_unlikely)]
+#![feature(cold_path)]
 
 mod r#impl;
 mod utils;

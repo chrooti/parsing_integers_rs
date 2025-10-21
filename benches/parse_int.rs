@@ -1,7 +1,10 @@
+#![feature(cold_path)]
+
 use criterion::{Criterion, criterion_group, criterion_main};
 use rand::prelude::*;
 use simd_parse_int::{self, ParseResult};
 use std::hint::black_box;
+use std::hint::cold_path;
 use std::io::Write;
 use std::{iter, usize};
 
@@ -104,10 +107,6 @@ impl<'a> Iterator for BenchCasesIterator<'a> {
         Some(slice)
     }
 }
-
-#[inline]
-#[cold]
-fn cold_path() {}
 
 fn parse_naive(x: &[u8]) -> Result<(usize, usize), ()> {
     let mut value: usize = 0;
