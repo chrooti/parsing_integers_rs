@@ -149,9 +149,7 @@ fn parse_naive(x: &[u8]) -> Result<(usize, usize), ()> {
 }
 
 fn criterion_benchmark(c: &mut Criterion) {
-    // setup here
-
-    let cases = BenchCases::new(10, 19, 0);
+    let cases = BenchCases::new(1024, 20, 0);
 
     for case in cases.iter() {
         let ParseResult {
@@ -174,7 +172,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         }
     }
 
-    c.bench_function("mov", |b| {
+    c.bench_function(format!("{}/mov", cases.name).as_str(), |b| {
         b.iter(|| {
             for _ in cases.iter() {
                 black_box(42);
@@ -182,7 +180,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("simd_parse_int", |b| {
+    c.bench_function(format!("{}/simd_parse_int", cases.name).as_str(), |b| {
         b.iter(|| {
             for case in cases.iter() {
                 black_box(simd_parse_int::parse(case));
@@ -190,7 +188,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("atoi_simd", |b| {
+    c.bench_function(format!("{}/atoi_simd", cases.name).as_str(), |b| {
         b.iter(|| {
             for case in cases.iter() {
                 let _ = black_box(atoi_simd::parse::<usize>(case));
@@ -198,7 +196,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         })
     });
 
-    c.bench_function("naive", |b| {
+    c.bench_function(format!("{}/naive", cases.name).as_str(), |b| {
         b.iter(|| {
             for case in cases.iter() {
                 let _ = black_box(parse_naive(case));

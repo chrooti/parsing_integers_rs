@@ -1,3 +1,5 @@
+#![feature(likely_unlikely)]
+
 mod r#impl;
 mod utils;
 

@@ -17,6 +17,7 @@ use std::arch::x86_64::_mm_set_epi8;
 use std::arch::x86_64::_mm_set_epi16;
 use std::arch::x86_64::_mm_set1_epi8;
 use std::arch::x86_64::_mm_sub_epi8;
+use std::hint::likely;
 
 #[derive(PartialEq, Eq, Debug)]
 pub struct ParseResult {
@@ -52,7 +53,7 @@ fn cold_path() {}
 #[target_feature(enable = "sse4.1")]
 pub fn parse(x: &[u8]) -> ParseResult {
     if x.len() <= 6 {
-        let mut value: usize = 0;
+        let mut value = 0_usize;
         let mut len = 0;
 
         for (i, byte) in x.iter().enumerate() {
@@ -90,7 +91,7 @@ pub fn parse(x: &[u8]) -> ParseResult {
 
     // this duplicates the "last round" code below to speed up the common case
     // of 16 < size <= 32 by trading off duplicated code for better branch prediction.
-    if x.len() - i <= 16 {
+    if likely(x.len() - i <= 16) {
         let chunk_len = (x.len() - i) as i8;
         chunk = unsafe { _mm_load_si128(str.add(16) as *const __m128i) };
 
@@ -114,10 +115,6 @@ pub fn parse(x: &[u8]) -> ParseResult {
             len: i,
         };
     }
-
-    // TODO: verify it makes a difference
-
-    cold_path();
 
     // strings with length > 32. The only way to end up here with a valid number
     // is by having 12 or more zeros in front of the string
@@ -197,9 +194,8 @@ fn parse_16_chars(input: __m128i) -> ParseResult {
         _mm_cmpgt_epi8(_mm_add_epi8(chunk, wrap), _mm_add_epi8(nine_bytes, wrap));
     let is_ascii_bitmask = _mm_movemask_epi8(is_ascii_bytemask) | 0x10000;
 
-    // TODO: check if usize cast is relevant or rust is a saner language
     let digit_count = is_ascii_bitmask.trailing_zeros() as usize;
-    let non_digit_count: usize = 16 - digit_count;
+    let non_digit_count = 16_usize - digit_count;
 
     // shift away everything starting from the first trailing non-digit
     chunk = shift_left_8x16(chunk, non_digit_count);
