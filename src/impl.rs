@@ -187,11 +187,11 @@ fn parse_16_chars(input: __m128i) -> ParseResult {
     // are in range
     let nine_bytes = _mm_set1_epi8(9);
     let wrap = _mm_set1_epi8(-128);
-    let is_ascii_bytemask =
+    let is_digit_bytemask =
         _mm_cmpgt_epi8(_mm_add_epi8(chunk, wrap), _mm_add_epi8(nine_bytes, wrap));
-    let is_ascii_bitmask = _mm_movemask_epi8(is_ascii_bytemask) | 0x10000;
+    let is_digit_bitmask = _mm_movemask_epi8(is_digit_bytemask) | 0x10000;
 
-    let digit_count = is_ascii_bitmask.trailing_zeros() as usize;
+    let digit_count = is_digit_bitmask.trailing_zeros() as usize;
     let non_digit_count = 16_usize - digit_count;
 
     // shift away everything starting from the first trailing non-digit
@@ -232,8 +232,8 @@ fn parse_16_chars(input: __m128i) -> ParseResult {
 fn parse_last_chars(chunk: __m128i, len: i8) -> ParseResult {
     // we've loaded 16 bytes so we need to mask the ones after the end of the string
     let indices = _mm_set_epi8(15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0);
-    let lengths = _mm_set1_epi8(len);
-    let is_before_end_mask = _mm_cmpgt_epi8(lengths, indices);
+    let len_mask = _mm_set1_epi8(len);
+    let is_before_end_mask = _mm_cmpgt_epi8(len_mask, indices);
 
     let chunk = _mm_and_si128(chunk, is_before_end_mask);
 
