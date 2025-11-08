@@ -72,6 +72,8 @@ pub fn parse(x: &[u8]) -> ParseResult {
     let offset = str.addr() & 0b1111_usize;
     str = unsafe { str.sub(offset) };
 
+    // this load breaks pointer provenance given that we load from a memory location that comes before the start of the slice
+    // however there is no way to encode this safely and it's not UB (it's just a load from a pointer after all)
     let mut chunk = unsafe { _mm_load_si128(str as *const __m128i) };
 
     // since we loaded some bytes before the start of the actual string here we shift them away
@@ -151,6 +153,9 @@ pub fn parse(x: &[u8]) -> ParseResult {
     // last round: we parse the remaining < 16 bytes
 
     let chunk_len = (x.len() - i) as i8;
+
+    // this again breaks pointer provenance because it loads after the end of the slice
+    // however, again, the use we make of it is not UB as far as I understand
     chunk = unsafe { _mm_load_si128(str.add(16 * loops) as *const __m128i) };
 
     result = parse_last_chars(chunk, chunk_len);
